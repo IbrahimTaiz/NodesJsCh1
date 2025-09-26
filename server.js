@@ -1,42 +1,62 @@
-// استيراد وحدات Node.js الأساسية: http و fs و path
+// استيراد وحدات Node.js الأساسية
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-// تعريف المنفذ
 const PORT = 3000;
 
-// إنشاء خادم HTTP
+// دالة لتقديم ملف index.html
+function serveHtml(res) {
+    const filePath = path.join(__dirname, 'index.html');
+    fs.readFile(filePath, (err, data) => {
+        if (err) {
+            console.error('File read error:', err);
+            res.writeHead(500, { 'Content-Type': 'text/plain' });
+            res.end('Server Error: Could not read HTML file');
+            return;
+        }
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(data);
+    });
+}
+
+// دالة لتقديم استجابة API بصيغة JSON
+function serveApiPing(res) {
+    const responseData = {
+        message: 'pong',
+        timestamp: new Date().toISOString(),
+        status: 'ok'
+    };
+    // تحديد Content-Type كـ application/json
+    res.writeHead(200, { 'Content-Type': 'application/json' }); 
+    res.end(JSON.stringify(responseData));
+}
+
+// دالة لمعالجة خطأ 404 (المسار غير موجود)
+function serveNotFound(res) {
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('404 Not Found: The requested resource does not exist.');
+}
+
+// إنشاء خادم HTTP باستخدام منطق التوجيه (Routing)
 const server = http.createServer((req, res) => {
-    // التحقق من المسار المطلوب (الرئيسي)
-    if (req.url === '/' || req.url === '/index.html') {
-        
-        // بناء المسار الصحيح لملف index.html
-        const filePath = path.join(__dirname, 'index.html');
-
-        // قراءة الملف بشكل غير متزامن
-        fs.readFile(filePath, (err, data) => {
-            if (err) {
-                // التعامل مع الأخطاء
-                console.error('File read error:', err);
-                res.writeHead(500, { 'Content-Type': 'text/plain' });
-                res.end('Server Error: Could not read file');
-                return;
-            }
-
-            // إرسال الاستجابة بنجاح
-            res.writeHead(200, { 'Content-Type': 'text/html' });
-            res.end(data);
-        });
-    } else {
-        // استجابة أولية للمسارات غير المعروفة
-        res.writeHead(404, { 'Content-Type': 'text/plain' });
-        res.end('404 Not Found (Basic)');
+    switch (req.url) { // استخدام switch لتنظيم التوجيه
+        case '/':
+        case '/index.html':
+            serveHtml(res);
+            break;
+        case '/api/ping': // معالجة مسار API الجديد
+            serveApiPing(res);
+            break;
+        default:
+            serveNotFound(res); // معالجة أي مسار آخر
+            break;
     }
 });
 
-// بدء الخادم والاستماع على المنفذ المحدد
+// بدء الخادم
 server.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}/`);
-    console.log('اضغط Ctrl+C لإيقاف الخادم.');
+    console.log('Test the API at http://localhost:${PORT}/api/ping');
+    console.log('Press Ctrl+C to stop the server.');
 });
